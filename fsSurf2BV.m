@@ -73,7 +73,7 @@ if ~isfield(Cfg,'SUBJECTS_DIR'), Cfg.SUBJECTS_DIR = '/Applications/freesurfer/su
 if ~isfield(Cfg, 'projectDir'), Cfg.projectDir = ''; else end;
 if ~isfield(Cfg, 'hemis'), Cfg.hemis = {'lh', 'rh'}; else end
 if ~isfield(Cfg, 'surfaceTypes'), Cfg.surfaceTypes = {'inflated', 'pial', 'smoothwm', 'sphere'}; else end;
-if ~isfield(Cfg, 'atlas'), Cfg.atlas = {'BA.annot', 'aparc.a2009s.annot', 'aparc.DKTatlas40.annot', 'Yeo2011_7Networks_N1000.annot', 'Yeo2011_17Networks_N1000.annot'}; else end;
+if ~isfield(Cfg, 'atlas'), Cfg.atlas = {'BA_exvivo.annot', 'aparc.a2009s.annot', 'aparc.DKTatlas40.annot', 'Yeo2011_7Networks_N1000.annot', 'Yeo2011_17Networks_N1000.annot'}; else end;
 %; 'BA.annot', Note: 'PALS_B12_Brodmann.annot' fails
 if ~isfield(Cfg, 'nSubClusters'), Cfg.nSubClusters = 0; else end;%for segmenting each labeled area into spatially distinct clusters
 
