@@ -90,6 +90,7 @@ if isdir(fullfile(Cfg.SUBJECTS_DIR, subjName))
     %subject-directory
     Cfg.currentSubjectName = subjName;
     processSubject(subjName, Cfg)
+    %fsSurf2BVlogging(subjName);
 else
     %interpret this as a search string
     d=dir(fullfile(Cfg.projectDir, subjName));
@@ -100,23 +101,50 @@ else
         waitbar(iSub/numel(d), sprintf('Creating vmrs, srfs, and pois %d/%d', iSub, numSubs));
         Cfg.currentSubjectName = d(iSub).name;
         processSubject(d(iSub).name, Cfg)
+        % Add logging 
+        %fsSurf2BVlogging(subjName);
     end
     close(h);
     
 end
 
+% function fsSurf2BVlogging(subjName)
+%     mlog
+%     reconallLOG = fullfile(Cfg.SUBJECTS_DIR, subjName, 'scripts', 'recon-all.log');
+%     copyfile(reconallLOG);    
+
+
 function processSubject(subjName, Cfg)
+
+Cfg.T1_DIR = fullfile(Cfg.projectDir, subjName, 'T1', '001');
+
+% Updated Output Directory (Cfg.bvDir) to be subjName-fsSurf2BV
+%Cfg.bvDir = fullfile(Cfg.projectDir, subjName, 'bv');
+Cfg.bvDir = fullfile(Cfg.projectDir, [subjName, '-Surf2BV']);
+if ~exist(Cfg.bvDir, 'dir')
+    mkdir(Cfg.bvDir)
+end
+
+% Setup Log File
+dt = datetime('now');
+ds = sprintf('%2d%2d%2d%2d%d',month(dt),day(dt),hour(dt),minute(dt),round(second(dt)));
+fOut = strcat(Cfg.bvDir,'/', subjName, '_fsSurf2BV-LOG', '_', ds,'.txt');
+
+% Start Logging
+diary(fOut)
+    
 fprintf(1, '--------------------------------\n');
 fprintf(1, 'Processing %s\n', subjName);
 fprintf(1, '--------------------------------\n');
+fprintf(1, 'Processing started: %s\n\n', dt);
 
-Cfg.T1_DIR = fullfile(Cfg.projectDir, subjName, 'T1', '001');
-Cfg.bvDir = fullfile(Cfg.projectDir, subjName, 'bv');
+
 
 %--------------------------------------------------------------------------
 %MAKE VMR
 %--------------------------------------------------------------------------
-fprintf(1, 'MAKE VMR:\n');
+fprintf(1, '\nMAKE VMR:\n');
+
 T1_fn = fullfile(Cfg.SUBJECTS_DIR, subjName, 'mri', 'brain.mgz');
 fprintf(1, 'LOADING %s\n', T1_fn);
 T1 = load_mgh(T1_fn);
@@ -126,14 +154,12 @@ T1f = flip(T1p, 1);
 
 vmr = xff('new:vmr');
 vmr.VMRData = uint8(T1f);
-if ~exist(Cfg.bvDir, 'dir')
-    mkdir(Cfg.bvDir)
-end
-vmr_fn = fullfile(Cfg.bvDir, 'brain.vmr');
+vmr_fn = fullfile(Cfg.bvDir, [subjName,'-brain-FS.vmr']);
 fprintf(1, 'SAVING %s\n', vmr_fn);
 vmr.SaveAs(vmr_fn);
 vmr.ClearObject;
 fprintf(1, '\n');
+
 
 %--------------------------------------------------------------------------
 %CONVERT SURFACES
@@ -181,6 +207,15 @@ for iHemi = 1:numel(Cfg.hemis)
         makePoiFromAnnot(fnAnnot, fnPoi, v, Cfg)
     end
 end
+
+% Logging
+    % mlog
+    reconallLOG = fullfile(Cfg.SUBJECTS_DIR, subjName, 'scripts', 'recon-all.log');
+    copyfile(reconallLOG,Cfg.bvDir); 
+    fsSurf2BVprogram = which('fsSurf2BV')
+    copyfile(fsSurf2BVprogram,Cfg.bvDir)
+    fprintf(1, 'COMPLETED\n');
+    diary off
 
 
 function makePoiFromAnnot(inAnnotFileName, outPoiFileName, v, Cfg)
@@ -303,3 +338,47 @@ if Cfg.nSubClusters > 0
     poiClustered.ClearObject;
 end
 
+
+function mlog (mfilename, destination)
+% MLOG
+%   creates a copy of the .m file within which this function was called; 
+%   appends the date and time to the file name and saves as a .txt file in 
+%   the specified directory or the current directory by default
+%
+%   MLOG(MFILENAME) saves a copy to the current directory
+%
+%   MLOG(MFILENAME, DESTINATION) saves a copy to the specified directory
+%
+%   MFILENAME is a function call. 
+%   DESTINATION is a string containing the absolute path to a different 
+%   directory or a folder name within the current directory
+%
+%   created by Carol Jew, 3/14/2014
+%       version 1 (3/14/2014): created function
+%       version 2 (3/17/2014): optional argument to specify different directory
+%       version 3 (3/21/2014): added '_log.txt' to filename (John Pyles)
+
+    parentFile = strcat(mfilename, '.m'); % main .m file calling this function    
+    formatOut = 'mm-dd-yyyy_HH-MM-SS';
+    version = datestr(now, formatOut);
+
+    if nargin == 2 % check if desination is included as an argument
+        try % try to copy file to the specified location
+            copyfile(parentFile, destination);
+            
+            % change the name of the copied file to include the date + time
+            % and '_log'
+            currentdir = pwd;
+            cd(destination);
+            movefile(parentFile, strcat(mfilename, '_', version, '_log.txt'));
+            cd(currentdir);
+        
+        catch % if an error gets thrown, save the copy in the current directory            
+            warning('Unable to save to "%s". It will be saved in the current directory', destination)
+            copyfile(parentFile, strcat(mfilename, '_', version, '_log.txt'));    
+        end        
+    else        
+        copyfile(parentFile, strcat(mfilename, '_', version, '_log.txt'));    
+    end
+
+    
